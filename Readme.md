@@ -46,7 +46,4 @@ A lightweight, web-based Docker monitoring system that goes beyond raw metrics â
 
 
 
-## ðŸ“„ License
-
-This project is developed for academic purposes as part of the 6th Semester Mini Project.
 
