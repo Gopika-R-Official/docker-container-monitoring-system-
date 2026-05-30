@@ -1,10 +1,12 @@
 require("dotenv").config();
 
+const { validateConfig, DOCKER_API, PORT, FRONTEND_URL } = require("./config");
+validateConfig();
+
 const express = require("express");
 const axios   = require("axios");
 const cors    = require("cors");
 const Groq    = require("groq-sdk");
-
 const {
   createConversation,
   getConversations,
@@ -28,9 +30,12 @@ const { startAgenticEngine, getAgenticLog } = require("./agenticEngine");
 // ─────────────────────────────────────────────────────────────────
 
 const app        = express();
-const DOCKER_API = "http://localhost:2375";
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:3000",
+  methods: ["GET", "POST", "DELETE"],
+  allowedHeaders: ["Content-Type"]
+}));
 app.use(express.json());
 app.use(nlDockerRoutes);
 
@@ -285,9 +290,10 @@ Be concise, specific, and helpful.`;
 });
 
 // ── boot ──────────────────────────────────────────────────────────
-app.listen(5000, () => {
-  console.log("Backend running on http://localhost:5000");
+app.listen(PORT, () => {
+  console.log(`Backend running on http://localhost:${PORT}`);
 });
+module.exports = app;
 startHealingEngine();       // existing rule-based engine (kept intact)
 startBaselineLearner();     // NEW: Z-score statistical learner
 startAgenticEngine();       // NEW: observe→reason→act→reflect loop
