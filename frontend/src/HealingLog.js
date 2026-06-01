@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from './api';
 
 function HealingLog() {
   const [logs, setLogs] = useState([]);
 
   const fetchLogs = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/healing-log");
+      const res = await api.get("/healing-log");
       setLogs(res.data);
     } catch (err) {
       console.error("Failed to fetch healing log");

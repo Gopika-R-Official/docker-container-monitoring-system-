@@ -25,6 +25,13 @@ const Z_THRESHOLD       = 2.5;      // warn
 const Z_CRITICAL        = 3.5;      // critical
 const ANOMALY_RING_SIZE = 100;
 
+const CPU_WARN_ABS      = 75;
+const CPU_CRIT_ABS      = 90;
+const MEM_WARN_ABS      = 75;
+const MEM_CRIT_ABS      = 90;
+const CPU_Z_MIN_VALUE   = 10;
+const MEM_Z_MIN_VALUE   = 10;
+
 // mem_rate tunables
 const MEM_RATE_WINDOW   = 5;        // derivative over last N mem samples
 const MEM_LEAK_RATE     = 0.5;      // %/min — flag as leak above this
@@ -123,6 +130,12 @@ function zScore(value, mu, sigma) {
   return (value - mu) / sigma;
 }
 
+function isOperationallySignificant(metric, value) {
+  if (metric === "cpu") return value >= CPU_Z_MIN_VALUE;
+  if (metric === "mem") return value >= MEM_Z_MIN_VALUE;
+  return true;
+}
+
 // ── memory growth rate helper ─────────────────────────────────────
 /**
  * Compute mem growth rate (%/min) from the last MEM_RATE_WINDOW
@@ -212,6 +225,7 @@ function recordAndScore({ container_id, container_name, metric, value }) {
   const z     = zScore(value, mu, sigma);
 
   if (Math.abs(z) <= Z_THRESHOLD) return null;
+  if (!isOperationallySignificant(metric, value)) return null;
 
   const severity = Math.abs(z) >= Z_CRITICAL ? "critical" : "warning";
 
@@ -281,6 +295,47 @@ function checkMemRate(container_id, container_name, rate) {
   );
 }
 
+function checkAbsoluteResource(container_id, container_name, metric, value) {
+  const warn = metric === "cpu" ? CPU_WARN_ABS : MEM_WARN_ABS;
+  const crit = metric === "cpu" ? CPU_CRIT_ABS : MEM_CRIT_ABS;
+
+  const severity =
+    value >= crit ? "critical"
+    : value >= warn ? "warning"
+    : null;
+
+  if (!severity) return;
+
+  const now = Date.now();
+  const last = anomalyRing.find(
+    a => a.container_id === container_id && a.metric === metric
+  );
+  if (last && now - last.detected_at < 120_000) return;
+
+  const anomaly = {
+    container_id,
+    container_name,
+    metric,
+    value,
+    mean:        0,
+    stddev:      0,
+    z_score:     severity === "critical" ? Z_CRITICAL + 0.1 : Z_THRESHOLD + 0.1,
+    severity,
+    detected_at: now,
+    time:        new Date(now).toLocaleTimeString(),
+    handled:     false,
+    trigger:     "absolute_threshold",
+  };
+
+  stmtInsertAnomaly.run({ ...anomaly });
+  pushAnomaly(anomaly);
+
+  console.log(
+    `[BASELINE] ${container_name} ${metric.toUpperCase()}` +
+    ` absolute threshold hit: ${value}% (${severity})`
+  );
+}
+
 // ── fds: absolute-threshold check ────────────────────────────────
 function checkFds(container_id, container_name, fds) {
   if (fds === 0) return;  // not supported on this kernel
@@ -342,6 +397,8 @@ async function pollCycle() {
     // 1. existing metrics
     recordAndScore({ container_id, container_name, metric: "cpu", value: stats.cpu });
     recordAndScore({ container_id, container_name, metric: "mem", value: stats.mem });
+    checkAbsoluteResource(container_id, container_name, "cpu", stats.cpu);
+    checkAbsoluteResource(container_id, container_name, "mem", stats.mem);
 
     // 2. store raw fds sample for z-score learning too
     if (stats.fds > 0) {

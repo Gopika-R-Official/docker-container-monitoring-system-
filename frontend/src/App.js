@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import axios from "axios";
+import api from './api';
 import "./App.css";
 import DependencyGraph from "./DependencyGraph";
 import PredictiveScaling from "./PredictiveScaling";
@@ -14,7 +14,7 @@ function App() {
 
   const fetchStats = useCallback(async (id) => {
     try {
-      const res = await axios.get(`http://localhost:5000/containers/${id}/stats`);
+      const res = await api.get(`/containers/${id}/stats`);
       const data = res.data;
 
       const cpuDelta =
@@ -59,7 +59,7 @@ function App() {
 
   const fetchContainers = useCallback(async () => {
     try {
-      const res = await axios.get("http://localhost:5000/containers");
+      const res = await api.get("/containers");
       setContainers(res.data);
 
       res.data.forEach((container) => {
@@ -75,7 +75,7 @@ function App() {
   const controlContainer = useCallback(
     async (id, action) => {
       try {
-        await axios.post(`http://localhost:5000/containers/${id}/${action}`);
+        await api.post(`/containers/${id}/${action}`);
         setTimeout(() => {
           fetchContainers();
         }, 1000);

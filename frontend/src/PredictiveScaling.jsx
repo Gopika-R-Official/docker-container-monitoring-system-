@@ -4,9 +4,8 @@
  */
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import axios from "axios";
+import api from "./api";
 
-const API         = "http://localhost:5000";
 const HORIZON_MIN = 15;
 const POLL_MS     = 5_000;
 const STEPS_AHEAD = Math.round((HORIZON_MIN * 60) / (POLL_MS / 1000)); // 180
@@ -467,14 +466,14 @@ export default function PredictiveScaling() {
 
   const tick = useCallback(async () => {
     try {
-      const { data: containers } = await axios.get(`${API}/containers`);
+      const { data: containers } = await api.get("/containers");
 
       await Promise.all(
         containers
           .filter(c => c.State === "running")
           .map(async (c) => {
             try {
-              const { data } = await axios.get(`${API}/containers/${c.Id}/stats`);
+              const { data } = await api.get(`/containers/${c.Id}/stats`);
 
               const cpuDelta = data.cpu_stats.cpu_usage.total_usage
                              - data.precpu_stats.cpu_usage.total_usage;

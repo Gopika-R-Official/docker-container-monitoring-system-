@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Network } from "vis-network";
-import axios from "axios";
+import api from './api';
 
 function DependencyGraph({ containers }) {
   const containerRef = useRef(null);
@@ -16,9 +16,7 @@ function DependencyGraph({ containers }) {
           .filter((c) => c.State === "running")
           .map(async (c) => {
             try {
-              const res = await axios.get(
-                `http://localhost:5000/containers/${c.Id}/stats`
-              );
+              const res = await api.get(`/containers/${c.Id}/stats`);
               const data = res.data;
               const cpuDelta =
                 data.cpu_stats.cpu_usage.total_usage -

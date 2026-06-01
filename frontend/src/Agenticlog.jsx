@@ -12,8 +12,7 @@
  */
 
 import React, { useEffect, useState, useCallback } from "react";
-
-const API = "http://localhost:5000";
+import api from "./api";
 
 const SEV_META = {
   critical: { color: "#ef4444", bg: "rgba(239,68,68,0.12)", icon: "🔴" },
@@ -155,20 +154,24 @@ function AnomalyTable({ anomalies }) {
 export default function AgenticLog() {
   const [episodes,  setEpisodes]  = useState([]);
   const [anomalies, setAnomalies] = useState([]);
+  const [containers, setContainers] = useState([]);
   const [tab, setTab]             = useState("episodes"); // "episodes" | "anomalies"
   const [loading, setLoading]     = useState(true);
   const [lastFetch, setLastFetch] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const [epRes, anRes] = await Promise.all([
-        fetch(`${API}/agentic-log`),
-        fetch(`${API}/anomalies`),
+      const [epRes, anRes, containerRes] = await Promise.all([
+        api.get("/agentic-log"),
+        api.get("/anomalies"),
+        api.get("/containers"),
       ]);
-      setEpisodes(await epRes.json());
-      setAnomalies(await anRes.json());
+      setEpisodes(epRes.data);
+      setAnomalies(anRes.data);
+      setContainers(containerRes.data);
       setLastFetch(new Date().toLocaleTimeString());
-    } catch {
+    } catch (err) {
+      console.error("Failed to fetch agentic loop data", err);
       // silently retain stale data
     } finally {
       setLoading(false);
@@ -185,6 +188,7 @@ export default function AgenticLog() {
   const actioned  = episodes.filter(e => !e.action_skipped && e.action_success).length;
   const critical  = anomalies.filter(a => a.severity === "critical").length;
   const warnings  = anomalies.filter(a => a.severity === "warning").length;
+  const running   = containers.filter(c => c.State === "running").length;
 
   return (
     <div style={styles.panel}>
@@ -202,11 +206,44 @@ export default function AgenticLog() {
 
         {/* summary chips */}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Chip label={`${containers.length} monitored`} color="#0ea5e9" />
+          <Chip label={`${running} running`} color="#22c55e" />
           <Chip label={`${episodes.length} episodes`}  color="#6366f1" />
           <Chip label={`${actioned} actions taken`}    color="#22c55e" />
           <Chip label={`${critical} critical`}         color="#ef4444" />
           <Chip label={`${warnings} warnings`}         color="#f59e0b" />
         </div>
+      </div>
+
+      <div style={styles.monitorGrid}>
+        {containers.length === 0 ? (
+          <span style={styles.monitorEmpty}>No containers reported by backend.</span>
+        ) : (
+          containers.map(c => {
+            const name = c.Names?.[0]?.replace("/", "") ?? c.Id.slice(0, 12);
+            const isRunning = c.State === "running";
+            const activeAnomaly = anomalies.find(a => a.container_id === c.Id && !a.handled);
+            return (
+              <div key={c.Id} style={{
+                ...styles.monitorPill,
+                borderColor: activeAnomaly
+                  ? activeAnomaly.severity === "critical" ? "#ef4444" : "#f59e0b"
+                  : isRunning ? "#22c55e55" : "#64748b55",
+              }}>
+                <span style={{
+                  ...styles.monitorDot,
+                  background: activeAnomaly
+                    ? activeAnomaly.severity === "critical" ? "#ef4444" : "#f59e0b"
+                    : isRunning ? "#22c55e" : "#64748b",
+                }} />
+                <span style={styles.monitorName}>{name}</span>
+                <span style={styles.monitorState}>
+                  {activeAnomaly ? `${activeAnomaly.metric.toUpperCase()} ${activeAnomaly.severity}` : c.State}
+                </span>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* tabs */}
@@ -280,6 +317,47 @@ const styles = {
     marginBottom: 14,
     borderBottom: "1px solid #1e293b",
     paddingBottom: 8,
+  },
+  monitorGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: 8,
+    margin: "0 0 14px",
+  },
+  monitorPill: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    minWidth: 0,
+    background: "#111827",
+    border: "1px solid",
+    borderRadius: 8,
+    padding: "8px 10px",
+  },
+  monitorDot: {
+    width: 8,
+    height: 8,
+    borderRadius: "50%",
+    flexShrink: 0,
+  },
+  monitorName: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: "#e2e8f0",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  monitorState: {
+    marginLeft: "auto",
+    fontSize: 10,
+    color: "#64748b",
+    textTransform: "uppercase",
+    whiteSpace: "nowrap",
+  },
+  monitorEmpty: {
+    color: "#64748b",
+    fontSize: 12,
   },
   tabBtn: {
     background:   "none",

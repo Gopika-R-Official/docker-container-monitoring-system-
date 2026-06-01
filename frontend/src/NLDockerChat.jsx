@@ -17,8 +17,7 @@
 import React, {
   useState, useEffect, useRef, useCallback,
 } from "react";
-
-const API = "http://localhost:5000";
+import API_BASE from "./config";
 
 // ── small helpers ─────────────────────────────────────────────────
 const ACTION_META = {
@@ -148,7 +147,7 @@ export default function NLDockerChat({
   // ── fetch conversation list ──────────────────────────────────────
   const fetchConvs = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/conversations`);
+      const res = await fetch(`${API_BASE}/conversations`);
       setConvs(await res.json());
     } catch { /* offline */ }
   }, []);
@@ -157,7 +156,7 @@ export default function NLDockerChat({
   const loadMessages = useCallback(async (id) => {
     if (!id) return;
     try {
-      const res  = await fetch(`${API}/conversations/${id}/messages`);
+      const res  = await fetch(`${API_BASE}/conversations/${id}/messages`);
       const data = await res.json();
       setMessages(data.map(m => ({
         role:    m.role,
@@ -170,7 +169,7 @@ export default function NLDockerChat({
   // ── new conversation ─────────────────────────────────────────────
   const newConversation = useCallback(async () => {
     try {
-      const res  = await fetch(`${API}/conversations`, { method: "POST",
+      const res  = await fetch(`${API_BASE}/conversations`, { method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "New Chat" }),
       });
@@ -203,7 +202,7 @@ export default function NLDockerChat({
       setMessages(prev => [...prev, { role: "command", content: text, time: timeNow() }]);
 
       try {
-        const res  = await fetch(`${API}/nl-docker`, {
+        const res  = await fetch(`${API_BASE}/nl-docker`, {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
           body:    JSON.stringify({ command: text }),
@@ -242,7 +241,7 @@ export default function NLDockerChat({
     let convId = activeConv;
     if (!convId) {
       try {
-        const res = await fetch(`${API}/conversations`, {
+        const res = await fetch(`${API_BASE}/conversations`, {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
           body:    JSON.stringify({ title: "New Chat" }),
@@ -258,7 +257,7 @@ export default function NLDockerChat({
     }
 
     try {
-      const res  = await fetch(`${API}/conversations/${convId}/message`, {
+      const res  = await fetch(`${API_BASE}/conversations/${convId}/message`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ question: text }),
