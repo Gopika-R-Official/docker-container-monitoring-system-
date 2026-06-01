@@ -17,7 +17,7 @@
 import React, {
   useState, useEffect, useRef, useCallback,
 } from "react";
-import API_BASE from "./config";
+import api from "./api";
 
 // ── small helpers ─────────────────────────────────────────────────
 const ACTION_META = {
@@ -147,8 +147,8 @@ export default function NLDockerChat({
   // ── fetch conversation list ──────────────────────────────────────
   const fetchConvs = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/conversations`);
-      setConvs(await res.json());
+      const { data } = await api.get("/conversations");
+      setConvs(data);
     } catch { /* offline */ }
   }, []);
 
@@ -156,8 +156,7 @@ export default function NLDockerChat({
   const loadMessages = useCallback(async (id) => {
     if (!id) return;
     try {
-      const res  = await fetch(`${API_BASE}/conversations/${id}/messages`);
-      const data = await res.json();
+      const { data } = await api.get(`/conversations/${id}/messages`);
       setMessages(data.map(m => ({
         role:    m.role,
         content: m.content,
@@ -169,11 +168,7 @@ export default function NLDockerChat({
   // ── new conversation ─────────────────────────────────────────────
   const newConversation = useCallback(async () => {
     try {
-      const res  = await fetch(`${API_BASE}/conversations`, { method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: "New Chat" }),
-      });
-      const c = await res.json();
+      const { data: c } = await api.post("/conversations", { title: "New Chat" });
       setActiveConv(c.id);
       setMessages([]);
       await fetchConvs();
@@ -202,12 +197,7 @@ export default function NLDockerChat({
       setMessages(prev => [...prev, { role: "command", content: text, time: timeNow() }]);
 
       try {
-        const res  = await fetch(`${API_BASE}/nl-docker`, {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ command: text }),
-        });
-        const data = await res.json();
+        const { data } = await api.post("/nl-docker", { command: text });
 
         if (data.error) {
           setMessages(prev => [...prev, {
@@ -241,12 +231,7 @@ export default function NLDockerChat({
     let convId = activeConv;
     if (!convId) {
       try {
-        const res = await fetch(`${API_BASE}/conversations`, {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ title: "New Chat" }),
-        });
-        const c = await res.json();
+        const { data: c } = await api.post("/conversations", { title: "New Chat" });
         convId = c.id;
         setActiveConv(c.id);
         await fetchConvs();
@@ -257,12 +242,7 @@ export default function NLDockerChat({
     }
 
     try {
-      const res  = await fetch(`${API_BASE}/conversations/${convId}/message`, {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ question: text }),
-      });
-      const data = await res.json();
+      const { data } = await api.post(`/conversations/${convId}/message`, { question: text });
       setMessages(prev => [...prev, { role: "ai", content: data.answer, time: timeNow() }]);
       fetchConvs();
     } catch {
