@@ -13,6 +13,7 @@
 
 const axios  = require("axios");
 const Groq   = require("groq-sdk");
+const { DOCKER_API } = require("./config");
 const {
   drainUnhandledAnomalies,
   markAnomalyHandled,
@@ -20,7 +21,6 @@ const {
 } = require("./baselineLearner");
 
 const groq       = new Groq({ apiKey: process.env.GROQ_API_KEY });
-const DOCKER_API = "http://localhost:2375";
 const LOOP_INTERVAL_MS = 20_000;   // reason+act every 20 s
 const COOLDOWN_MS      = 120_000;  // per-container action cooldown
 const LOG_MAX          = 100;

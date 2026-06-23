@@ -1,8 +1,8 @@
 const express = require("express");
 const axios = require("axios");
+const { DOCKER_API } = require("./config");
 
 const router = express.Router();
-const DOCKER_API = "http://localhost:2375";
 
 function getContainerName(container) {
   return container.Names?.[0]?.replace(/^\//, "") || container.Id.slice(0, 12);

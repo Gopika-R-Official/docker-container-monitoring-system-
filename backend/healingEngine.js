@@ -1,11 +1,9 @@
 const axios = require("axios");
 const Groq = require("groq-sdk");
+const { DOCKER_API } = require("./config");
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 console.log("GROQ KEY loaded:", process.env.GROQ_API_KEY ? "YES" : "NO");
-
-
-const DOCKER_API = "http://localhost:2375";
 
 const healingLog = [];
 const lastHealedAt = {};

@@ -15,9 +15,9 @@
 const axios    = require("axios");
 const Database = require("better-sqlite3");
 const path     = require("path");
+const { DOCKER_API } = require("./config");
 
 // ── tunables ──────────────────────────────────────────────────────
-const DOCKER_API        = "http://localhost:2375";
 const POLL_INTERVAL_MS  = 30_000;   // sample every 30 s
 const WINDOW_SIZE       = 60;       // rolling window (~30 min)
 const MIN_SAMPLES       = 10;       // minimum before z-score is meaningful
